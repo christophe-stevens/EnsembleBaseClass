@@ -17,4 +17,5 @@ Imports:
   nnet,
   kknn,
   glmnet,
-  bartMachine
+  bartMachine,
+  xgboost

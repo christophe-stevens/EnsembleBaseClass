@@ -19,7 +19,7 @@ make.configs.knn.regression <- function(df=expand.grid(kernel=c("rectangular","e
 setMethod("BaseLearner.Fit", "KNN.Regression.Config",
   function(object, formula, data, tmpfile=NULL, print.level=1) {
     y <- data[,all.vars(formula)[1]]
-    est <- kknn(formula, data, data, k=object@k, kernel=object@kernel)
+    est <- kknn::kknn(formula, data, data, k=object@k, kernel=object@kernel)
     pred <- est$fitted.values
     if (!is.null(tmpfile)) {
       save(est, file=tmpfile, compress=FALSE)
@@ -35,7 +35,7 @@ setMethod("BaseLearner.Fit", "KNN.Regression.Config",
 predict.KNN.Regression.FitObj <- function(object, newdata=NULL, ...) {
   if (is.null(newdata)) return (object@pred)
   if (is.character(object@est)) object@est <- load.object(object@est)
-  newreg <- kknn(object@formula, object@data, newdata, k=object@config@k, kernel=object@config@kernel)
+  newreg <- kknn::kknn(object@formula, object@data, newdata, k=object@config@k, kernel=object@config@kernel)
   #rm(object); gc()
   return (newreg$fitted.values)
 }

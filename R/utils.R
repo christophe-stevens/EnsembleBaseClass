@@ -22,12 +22,6 @@ generate.partitions <- function(npart=1, ntot, nfold=5, ids=1:npart) {
 
 rmse.error <- function(a,b) sqrt(mean((a-b)^2))
 
-rowMode <- function(row){
-  rowValues <- data.frame(values=unique(row))
-  rowValues$count <- sapply(rowValues$values, FUN = function(x){ sum(row==x)})
-  rowValues[which.max(rowValues$count),1]
-}
-
 # credit (and potential blame!) for this function goes to anonymous stackoverflow user!
 load.object <- function(file) {
   env <- new.env()
@@ -48,8 +42,17 @@ regression.extract.response <- function(formula, data) {
   if (inherits(ret, "try-error")) stop("response extraction failed")
   return (ret)
 }
+# chris: same as above but duplicated for consistency in function names
 classification.extract.response <- function(formula, data) {
-  ret <- try(as.character(data[,all.vars(formula)[1]]), silent=T)
+  ret <- try(data[,all.vars(formula)[1]], silent=T)
+  if(class(ret) != "numeric" & sum(unique(ret) %nin% c(0,1))==0 )
+    stop("the response variable must be hot-encoded using 0 and 1 in numeric")
   if (inherits(ret, "try-error")) stop("response extraction failed")
   return (ret)
 }
+
+quiet <- function(x) { 
+  sink(tempfile()) 
+  on.exit(sink()) 
+  invisible(force(x)) 
+} 

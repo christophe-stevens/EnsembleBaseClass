@@ -22,7 +22,8 @@ setMethod("BaseLearner.Fit", "GBM.Classification.Config",
     data[,respVar] <- as.character(data[,respVar]) # required by bgm
     est <- gbm::gbm(formula, distribution="bernoulli", data=data, n.trees=object@n.trees, interaction.depth=object@interaction.depth
                , bag.fraction=object@bag.fraction, shrinkage=object@shrinkage, verbose=print.level>=1)
-    pred <- as.character(round(predict(est, newdata=data, n.trees=object@n.trees, type="response"),0))
+    # must retrun probabilities 
+    pred <- predict(est, newdata=data, n.trees=object@n.trees, type="response")
     #pred <- factor(pred, level=list("0","1"), label="0","1")
     if (!is.null(tmpfile)) {
       save(est, file=tmpfile, compress=FALSE)
@@ -38,7 +39,7 @@ setMethod("BaseLearner.Fit", "GBM.Classification.Config",
 predict.GBM.Classification.FitObj <- function(object, newdata=NULL, ...) {
   if (is.null(newdata)) return (object@pred)
   if (is.character(object@est)) object@est <- load.object(object@est)
-  newpred <- as.character(round(predict(object@est, newdata=newdata, n.trees=object@config@n.trees, type="response"),0))
+  newpred <- predict(object@est, newdata=newdata, n.trees=object@config@n.trees, type="response")
   #rm(object); gc()
   return (newpred)
 }

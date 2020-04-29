@@ -18,7 +18,7 @@ setMethod("BaseLearner.Fit", "SVM.Regression.Config",
   function(object, formula, data, tmpfile=NULL, print.level=1) {
     respVar <- all.vars(formula)[1]
     y <- data[,respVar]
-    est <- svm(formula, data, kernel=object@kernel, cost=object@cost, epsilon=object@epsilon)
+    est <- e1071::svm(formula, data, kernel=object@kernel, cost=object@cost, epsilon=object@epsilon)
     pred <- as.vector(predict(est))
     if (!is.null(tmpfile)) {
       save(est, file=tmpfile, compress=FALSE)

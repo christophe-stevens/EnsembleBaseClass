@@ -20,7 +20,7 @@ setMethod("BaseLearner.Fit", "RF.Regression.Config",
   function(object, formula, data, tmpfile=NULL, print.level=1) {
     y <- data[,all.vars(formula)[1]]
     varnames <- labels(terms(formula))
-    est <- randomForest(formula, data, ntree=object@ntree
+    est <- randomForest::randomForest(formula, data, ntree=object@ntree
       , nodesize=object@nodesize
       , mtry=max(floor(object@mtry.mult*length(varnames)/3), 1), do.trace=print.level>=1, keep.forest=T)
     pred <- as.vector(est$predicted)

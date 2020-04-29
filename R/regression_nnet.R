@@ -27,7 +27,7 @@ setMethod("BaseLearner.Fit", "NNET.Regression.Config",
     } else { # shouldn't we do something more drastic if y.range=0?!
       data[,respVar] <- (data[,respVar]-y.min)
     }
-    est <- nnet(formula, data, size=object@size, decay=object@decay, maxit=object@maxit, trace=print.level>=1)
+    est <- nnet::nnet(formula, data, size=object@size, decay=object@decay, maxit=object@maxit, trace=print.level>=1)
     pred <- predict(est)
     if (y.range>0) pred <- as.vector(pred*y.range+y.min)
     else pred <- as.vector(pred+y.min)

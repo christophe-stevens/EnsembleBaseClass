@@ -18,8 +18,8 @@ make.configs.svm.classification <- function(df=expand.grid(cost=c(0.1,0.5,1.0,5.
 setMethod("BaseLearner.Fit", "SVM.Classification.Config",
   function(object, formula, data, tmpfile=NULL, print.level=10) {
     respVar <- all.vars(formula)[1]
-    est <- e1071::svm(formula, data, kernel=object@kernel, cost=object@cost, epsilon=object@epsilon,type="C-classification")
-    pred <- as.character(as.vector(predict(est)), level=list(0,1), label="0","1")
+    est <- e1071::svm(formula, data, kernel=object@kernel, cost=object@cost, epsilon=object@epsilon,type="C-classification", probability=TRUE)
+    pred <- attr(predict(est, newdata=data, probability=TRUE),"probabilities")[,"1"]
     if (!is.null(tmpfile)) {
       save(est, file=tmpfile, compress=FALSE)
       rm(est); gc()
@@ -34,7 +34,7 @@ setMethod("BaseLearner.Fit", "SVM.Classification.Config",
 predict.SVM.Classification.FitObj <- function(object, newdata=NULL, ...) {
   if (is.null(newdata)) return (object@pred)
   if (is.character(object@est)) object@est <- load.object(object@est)
-  newpred <- as.character(predict(object@est, newdata=newdata, na.action=na.pass))
+  newpred <- attr(predict(object@est, newdata=newdata, na.action=na.pass, probability=TRUE),"probabilities")[,"1"]
   #rm(object); gc()
   return (newpred)
 }

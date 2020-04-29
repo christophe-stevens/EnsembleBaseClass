@@ -19,7 +19,7 @@ make.configs.gbm.regression <- function(df=expand.grid(n.trees=c(1000,2000),inte
 setMethod("BaseLearner.Fit", "GBM.Regression.Config",
   function(object, formula, data, tmpfile=NULL, print.level=1) {
     y <- data[,all.vars(formula)[1]]
-    est <- gbm(formula, distribution="gaussian", data=data, n.trees=object@n.trees, interaction.depth=object@interaction.depth
+    est <- gbm::gbm(formula, distribution="gaussian", data=data, n.trees=object@n.trees, interaction.depth=object@interaction.depth
                , bag.fraction=object@bag.fraction, shrinkage=object@shrinkage, verbose=print.level>=1)
     pred <- predict(est, newdata=data, n.trees=object@n.trees)
     if (!is.null(tmpfile)) {

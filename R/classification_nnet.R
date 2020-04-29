@@ -21,7 +21,7 @@ setMethod("BaseLearner.Fit", "NNET.Classification.Config",
     respVar <- all.vars(formula)[1]
     data[,respVar] <- as.factor( data[,respVar] )
     est <- nnet::nnet(formula, data, size=object@size, decay=object@decay, maxit=object@maxit, trace=print.level>=1)
-    pred <- as.character(as.vector(round(predict(est))))
+    pred <- as.vector(predict(est))
     if (!is.null(tmpfile)) {
       save(est, file=tmpfile, compress=FALSE)
       rm(est); gc()
@@ -36,7 +36,7 @@ setMethod("BaseLearner.Fit", "NNET.Classification.Config",
 predict.NNET.Classification.FitObj <- function(object, newdata=NULL, ...) {
   if (is.null(newdata)) return (object@pred)
   if (is.character(object@est)) object@est <- load.object(object@est)
-  newpred <- as.character(as.vector(round(predict(object@est, newdata=newdata))))
+  newpred <- as.vector(predict(object@est, newdata=newdata))
   #rm(object); gc()
   return (newpred)
 }

@@ -19,9 +19,8 @@ setClass("Classification.Config", contains="BaseLearner.Config")
 # chris-change: baselearner can also take parameters' values
 # type = "classification" The only problem with that would be that there would be a penreg.CLassification 
 # but then I think people brains are flexible to error.
-make.configs <- function(baselearner=c("nnet","rf","svm","gbm","knn", "penreg"), config.df, type="regression") {
+make.configs <- function(baselearner=c("nnet","rf","svm","gbm","knn", "penreg","xgboost","bart"), config.df, type="regression") {
   if (type %nin% c("regression","classification")) stop("invalid type argument")
-  
   if (length(baselearner)==1) {
     if (missing(config.df)) {
       mycall <- call(paste("make.configs", baselearner, type, sep="."))
@@ -54,26 +53,25 @@ setOldClass("glmnet")
 setOldClass("elnet")
 setOldClass("lognet")
 setOldClass("bartMachine")
+setOldClass("xgb.Booster")
 # we then create a union of these estimation classes to form a common container (character is needed for filemethod=TRUE)
-setClassUnion("RegressionEstObj", c("character","gbm","kknn","nnet.formula","svm.formula","randomForest.formula","glmnet","elnet","bartMachine"))
+setClassUnion("RegressionEstObj", c("character","gbm","kknn","nnet.formula","svm.formula","randomForest.formula","glmnet","elnet","xgb.Booster", "bartMachine"))
 # add similar classes for classification, survival, etc
 # chris-change: adding but we consider same base algorithms so far without bart and elnet
-setClassUnion("ClassificationEstObj", c("character","gbm","kknn","nnet.formula","svm.formula","randomForest.formula","glmnet","lognet"))
+setClassUnion("ClassificationEstObj", c("character","gbm","kknn","nnet.formula","svm.formula","randomForest.formula","glmnet","lognet","xgb.Booster","bartMachine"))
 
 
 # NULL is added for efficiency: when called within CV context, we don't need to retain pred pieces in each fold
 setClassUnion("OptionalNumeric", c("NULL","numeric"))
 # same argument, this time for partition field
 setClassUnion("OptionalInteger", c("NULL","integer"))
-# chris:set new class
-setClassUnion("OptionalCharacter", c("NULL","character")) # extends with charactor and numeric for debug
 
 # base class for output of base learner training
 setClass("BaseLearner.FitObj", slots = c(config="BaseLearner.Config"), contains = "VIRTUAL")
 setClass("Regression.FitObj", slots=c(est="RegressionEstObj", pred="OptionalNumeric"), contains="BaseLearner.FitObj")
 # add similar classes for class, surv, etc
 # chris-change: Adding classification
-setClass("Classification.FitObj", slots=c(est="ClassificationEstObj", pred="OptionalCharacter"), contains="BaseLearner.FitObj")
+setClass("Classification.FitObj", slots=c(est="ClassificationEstObj", pred="OptionalNumeric"), contains="BaseLearner.FitObj")
 
 # class for output of base learner cv training
 setClass("BaseLearner.CV.FitObj"
@@ -82,7 +80,7 @@ setClass("BaseLearner.CV.FitObj"
 )
 Regression.CV.FitObj <- setClass("Regression.CV.FitObj", slots=c(pred="OptionalNumeric"), contains="BaseLearner.CV.FitObj")
 # chris-change: Adding classification
-Classification.CV.FitObj <- setClass("Classification.CV.FitObj", slots=c(pred="OptionalCharacter"), contains="BaseLearner.CV.FitObj")
+Classification.CV.FitObj <- setClass("Classification.CV.FitObj", slots=c(pred="OptionalNumeric"), contains="BaseLearner.CV.FitObj")
 
 # cross-validated training of regression base learners
 # note: we cannot generalize to class, surv since the pred object will probably have a different structure
@@ -143,9 +141,10 @@ predict.Classification.CV.FitObj <- function(object, newdata=NULL, ...) {
   if (is.null(newdata)) return (object@pred)
   nfolds <- length(object@fitobj.list)
   output <- as.matrix(rep(NA,nrow(newdata)*nfolds),ncol=nfolds)
-  ret <- as.character(apply(sapply(1:nfolds, function(i) {
+  
+  ret <- rowMeans(sapply(1:nfolds, function(i) {
     predict(object@fitobj.list[[i]], newdata=newdata)
-  }),1, rowMode))
+  }))
   return (ret)
 }
 
@@ -177,7 +176,7 @@ BaseLearner.CV.Batch.FitObj <- setClass("BaseLearner.CV.Batch.FitObj"
     , tmpfiles="OptionalCharacter", tmpfiles.index.list="list", tvec = "OptionalNumeric"), contains="VIRTUAL")
 Regression.CV.Batch.FitObj <- setClass("Regression.CV.Batch.FitObj", slots=c(pred="matrix", y="OptionalNumeric"), contains="BaseLearner.CV.Batch.FitObj")
 # chris-change: Adding classification
-Classification.CV.Batch.FitObj <- setClass("Classification.CV.Batch.FitObj", slots=c(pred="matrix", y="OptionalCharacter"), contains="BaseLearner.CV.Batch.FitObj")
+Classification.CV.Batch.FitObj <- setClass("Classification.CV.Batch.FitObj", slots=c(pred="matrix", y="OptionalNumeric"), contains="BaseLearner.CV.Batch.FitObj")
 
 
 # helper function for determining the start and end indexes of tempfiles in batch call, to be passed to each individual cv fit job
@@ -304,7 +303,7 @@ schedule.tasks <- function(ncores = 1
 Regression.CV.Batch.Fit <- function(instance.list, formula, data, ncores=1, filemethod=FALSE, print.level=1
   , preschedule = TRUE, schedule.method = c("random", "as.is", "task.length"), task.length) {
   schedule.method <- match.arg(schedule.method)
-
+  quiet(bartMachine::set_bart_machine_num_cores(ncores))
   y <- regression.extract.response(formula, data)
   index.list <- extract.tmpfiles.indexes(instance.list)
   tmpfiles <- if (filemethod) tempfile(rep("file", max(index.list$end))) else NULL
@@ -423,7 +422,7 @@ Regression.CV.Batch.Fit <- function(instance.list, formula, data, ncores=1, file
 Classification.CV.Batch.Fit <- function(instance.list, formula, data, ncores=1, filemethod=FALSE, print.level=1
                                     , preschedule = TRUE, schedule.method = c("random", "as.is", "task.length"), task.length) {
   schedule.method <- match.arg(schedule.method)
-  
+  quiet(bartMachine::set_bart_machine_num_cores(ncores))
   y <- classification.extract.response(formula, data)
   index.list <- extract.tmpfiles.indexes(instance.list)
   tmpfiles <- if (filemethod) tempfile(rep("file", max(index.list$end))) else NULL
@@ -512,6 +511,7 @@ Classification.CV.Batch.Fit <- function(instance.list, formula, data, ncores=1, 
         }
       } else {
         ret <- foreach(ii=1:njobs,  .options.multicore=list(preschedule = FALSE)) %dopar% { # TODO: this needs work
+          #source("./R/thread_util.R")
           myconfig <- instance.list@instances[[ii]]@config
           baselearner.name <- extract.baselearner.name(myconfig, type="classification")
           if (print.level>=1) cat("processing job", ii, "of", njobs, "(", baselearner.name, ") ...\n")
@@ -548,6 +548,7 @@ predict.Regression.CV.Batch.FitObj <- function(object, ..., ncores=1
       predict(x, ...)
     })
   } else {
+    quiet(bartMachine::set_bart_machine_num_cores(ncores))
     registerDoParallel(ncores)
     predmat <- unname(foreach(ii=1:length(object@fitobj.list), .combine=cbind, .options.multicore=list(preschedule=preschedule)) %dopar%
       predict(object@fitobj.list[[ii]], ...))
@@ -563,6 +564,7 @@ predict.Classification.CV.Batch.FitObj <- function(object, ..., ncores=1
       predict(x, ...)
     })
   } else {
+    quiet(bartMachine::set_bart_machine_num_cores(ncores))
     registerDoParallel(ncores)
     predmat <- unname(foreach(ii=1:length(object@fitobj.list),  .combine=cbind, .options.multicore=list(preschedule=preschedule)) %dopar%
                         predict(object@fitobj.list[[ii]], ...))
@@ -600,8 +602,7 @@ plot.Classification.CV.Batch.FitObj <- function(x, errfun=rmse.error, ylim.adj =
   n.tot <- length(baselearner.names)
   n.unique <- length(baselearner.names.unique)
   y <- x@y
-  error <- apply(x@pred, 2, FUN = function(x){ errfun(as.numeric(x),
-                                                      as.numeric(y))})
+  error <- apply(x@pred, 2, FUN = function(x){ errfun(x,y)})
   pch.vec <- 1:n.unique # change this for custom styles
   c <- 1
   for (i in 1:n.unique) {
@@ -704,11 +705,12 @@ BaseLearner.Batch.FitObj <- setClass("BaseLearner.Batch.FitObj"
     , tmpfiles="OptionalCharacter"), contains="VIRTUAL")
 Regression.Batch.FitObj <- setClass("Regression.Batch.FitObj", slots=c(pred="matrix", y="numeric"), contains="BaseLearner.Batch.FitObj")
 # chris-change: adding for classification
-Classification.Batch.FitObj <- setClass("Classification.Batch.FitObj", slots=c(pred="matrix", y="OptionalCharacter"), contains="BaseLearner.Batch.FitObj")
+Classification.Batch.FitObj <- setClass("Classification.Batch.FitObj", slots=c(pred="matrix", y="OptionalNumeric"), contains="BaseLearner.Batch.FitObj")
 
 
 # training
 Regression.Batch.Fit <- function(config.list, formula, data, ncores=1, filemethod=FALSE, print.level=1) {
+  quiet(bartMachine::set_bart_machine_num_cores( ncores))
   y <- regression.extract.response(formula, data)
   njobs <- length(config.list)
   tmpfiles <- if (filemethod) tempfile(rep("file", njobs)) else NULL
@@ -731,7 +733,7 @@ Regression.Batch.Fit <- function(config.list, formula, data, ncores=1, filemetho
   } else {
     # to improve performance of dynamic scheduling, sort in descending order of expected execution time
     registerDoParallel(ncores)
-    ret <- foreach(ii=1:njobs, .options.multicore=list(preschedule=FALSE)) %dopar% {
+    ret <- foreach(ii=1:njobs, .options.multicore=list(preschedule=FALSE), .packages = c("kknn")) %dopar% {
       #source("./R/thread_util.R")
       myconfig <- config.list[[ii]]
       baselearner.name <- extract.baselearner.name(myconfig, type="regression")
@@ -758,6 +760,7 @@ Regression.Batch.Fit <- function(config.list, formula, data, ncores=1, filemetho
 
 # chris-change: adding for classification
 Classification.Batch.Fit <- function(config.list, formula, data, ncores=1, filemethod=FALSE, print.level=1) {
+  quiet(bartMachine::set_bart_machine_num_cores( ncores))
   y <- classification.extract.response(formula, data)
   njobs <- length(config.list)
   tmpfiles <- if (filemethod) tempfile(rep("file", njobs)) else NULL
@@ -864,7 +867,7 @@ plot.Classification.Batch.FitObj <- function(x, errfun=rmse.error, ...) {
   n.tot <- length(baselearner.names)
   n.unique <- length(baselearner.names.unique)
   y <- x@y
-  error <- apply(x@pred, 2, FUN= function(x){ errfun(as.numeric(x),as.numeric(y))})
+  error <- apply(x@pred, 2, errfun, y)
   pch.vec <- 1:n.unique # change this for custom styles
   c <- 1
   for (i in 1:n.unique) {
@@ -929,10 +932,8 @@ setMethod("validate", "Classification.Batch.FitObj"
             pred <- object@pred
             newy <- classification.extract.response(formula, newdata)
             newpred <- predict(object, newdata)
-            error <- apply(pred, 2, FUN = function(x) {
-              errfun(as.numeric(x), as.numeric(y))})
-            newerror <- apply(newpred, 2, FUN = function(x) {
-              errfun(as.numeric(x), as.numeric(newy))})
+            error <- apply(pred, 2, errfun, y)
+            newerror <- apply(newpred, 2, errfun, newy)
             corr <- cor(error, newerror)
             corr.vec <- double(n.unique)
             

@@ -26,8 +26,11 @@ setMethod("BaseLearner.Fit", "BART.Regression.Config",
     mt <- attr(mf, "terms")
     X <- model.matrix(mt, mf)
     y <- model.response(mf, "numeric")
-    est <- bartMachine(X = as.data.frame(X), y = y, num_trees = object@num_trees, k = object@k, q = object@q, nu = object@nu
-                       , verbose=print.level>=1, mem_cache_for_speed = FALSE)
+    est <- bartMachine::bartMachine(X = as.data.frame(X), y = y, num_trees = object@num_trees,
+                       k = object@k, q = object@q, nu = object@nu,
+                       verbose=print.level>=1, 
+                       mem_cache_for_speed = FALSE,
+                       serialize = TRUE)
     pred <- as.numeric(predict(est, new_data = as.data.frame(X)))
     gc()
     

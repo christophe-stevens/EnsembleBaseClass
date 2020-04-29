@@ -1,5 +1,3 @@
-devtools::install_github("christophe-stevens/EnsembleBaseClass")
-require("EnsembleBaseClass") 
 rm(list=ls())
 
 
@@ -11,6 +9,11 @@ rm(list=ls())
 #
 ##############################
 options(java.parameters = "-Xmx5g") # adpat for available ram (check using task manager in winows/df in linux?)
+pkg <- c("doParallel","parallel","foreach","e1071", "gbm",
+         "randomForest","nnet","kknn","glmnet","bartMachine","xgboost")
+sapply(pkg, library, character.only =T)
+
+source("./R/thread_util.R")
 
 ##############################
 #
@@ -67,8 +70,12 @@ rm(list=ls())
 #
 #
 ##############################
-options(java.parameters = "-Xmx5G")
+options(java.parameters = "-Xmx2400M")
+pkg <- c("doParallel","parallel","foreach","e1071", "gbm",
+         "randomForest","nnet","kknn","glmnet","bartMachine","xgboost")
+sapply(pkg, library, character.only =T)
 
+source("./R/thread_util.R")
 
 ##############################
 #

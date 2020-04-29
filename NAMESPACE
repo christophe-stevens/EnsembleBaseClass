@@ -26,7 +26,7 @@ importFrom(bartMachine, bartMachine)
 ## utils.R
 export(generate.partition, generate.partitions
   , rmse.error, load.object, extract.baselearner.name
-  , regression.extract.response, classification.extract.response, rowMode)
+  , regression.extract.response, classification.extract.response)
 
 ## integrators.R
 #  classes
@@ -106,7 +106,13 @@ S3method(predict, PENREG.Classification.FitObj)
 # BART
 exportClasses(BART.Regression.Config, BART.Regression.FitObj)
 S3method(predict, BART.Regression.FitObj)
+exportClasses(BART.Classification.Config, BART.Classification.FitObj)
+S3method(predict, BART.Classification.FitObj)
 
 
-
+# XGBOOST
+exportClasses(XGBOOST.Regression.Config, XGBOOST.Regression.FitObj)
+S3method(predict, XGBOOST.Regression.FitObj)
+exportClasses(XGBOOST.Classification.Config, XGBOOST.Classification.FitObj)
+S3method(predict, XGBOOST.Classification.FitObj)
 

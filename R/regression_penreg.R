@@ -22,7 +22,7 @@ setMethod("BaseLearner.Fit", "PENREG.Regression.Config",
     mt <- attr(mf, "terms")
     X <- model.matrix(mt, mf)
     y <- model.response(mf, "numeric")
-    est <- glmnet(X, y, family = "gaussian", lambda = object@lambda, alpha = object@alpha)
+    est <- glmnet::glmnet(X, y, family = "gaussian", lambda = object@lambda, alpha = object@alpha)
     pred <- as.numeric(predict(est, newx=X))
     
     if (!is.null(tmpfile)) {
