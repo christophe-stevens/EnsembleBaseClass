@@ -22,6 +22,8 @@ setMethod("BaseLearner.Fit", "KNN.Classification.Config",
     data[,respVar] <- as.factor(data[,respVar]) # required by rf
     est <- kknn::kknn(formula, data, data, k=object@k, kernel=object@kernel)
     pred <- est$prob[,"1"]
+    pred <- ifelse(pred>0.9999,0.9999, pred)
+    pred <- ifelse(pred<0.0001,0.0001, pred)
     if (!is.null(tmpfile)) {
       save(est, file=tmpfile, compress=FALSE)
       rm(est); gc()
@@ -37,6 +39,9 @@ predict.KNN.Classification.FitObj <- function(object, newdata=NULL, ...) {
   if (is.null(newdata)) return (as.character(object@pred))
   if (is.character(object@est)) object@est <- load.object(object@est)
   newclass <- kknn::kknn(object@formula, object@data, newdata, k=object@config@k, kernel=object@config@kernel)
+  # Avoid 0 and 1 
+  newclass$prob[,"1"] <- ifelse(newclass$prob[,"1"]>0.9999,0.9999, newclass$prob[,"1"])
+  newclass$prob[,"1"] <- ifelse(newclass$prob[,"1"]<0.0001,0.0001, newclass$prob[,"1"])
   #rm(object); gc()
   return (newclass$prob[,"1"])
 }
